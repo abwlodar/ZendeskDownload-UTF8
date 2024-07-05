@@ -4,8 +4,12 @@ A customer wanted to avoid upgrading their Zendesk plan, and was wondering if th
 
 What you need to know to make this work:
 
-Install wkhtmltopdf. This is used to generate PDFs of the tickets for easy printing. This can be disabled in the script if you wish.
-Be sure to set the variables at the beginning of the script, especially "$subomain", "$email", and "$api_token". Optionally, you can change "$ticketsFolder" to save the data somewhere else. By default it will save everything wherever the script is located. You can also set "generatepdfs" to "$false" if you wish (makes the process a bit quicker), and if you installed "wkhtmltopdf" in a non-default location, be sure to update this as well.
-Depending on the number of tickets, this may take a long time to run (hours). When it is finished, launch the index.html file by creating a batch file as follows. This is necessary because, by default, browsers do not allow access to local files, so the tickets will not load correctly otherwise.
+1. Install wkhtmltopdf. This is used to generate PDFs of the tickets for easy printing. This can be disabled in the script if you wish.
+
+2. Be sure to set the variables at the beginning of the script, especially "$subomain", "$email", and "$api_token". Optionally, you can change "$ticketsFolder" to save the data somewhere else. By default it will save everything wherever the script is located. You can also set "generatepdfs" to "$false" if you wish (makes the process a bit quicker), and if you installed "wkhtmltopdf" in a non-default location, be sure to update this as well.
+
+3. Depending on the number of tickets, this may take a long time to run (hours). When it is finished, launch the index.html file by creating a batch file as follows. This is necessary because, by default, browsers do not allow access to local files, so the tickets will not load correctly otherwise.
+
         start msedge --allow-file-access-from-files "%~dp0index.html"
-Feel free to make your own tweaks and improvements. At this point, it just downloads everything, with no way to filter by date or anything. I'm sure it's possible to add this functionality, but I didn't take the time to do it because my customer doesn't care about that.
+        
+4. Feel free to make your own tweaks and improvements. At this point, it just downloads everything, with no way to filter by date or anything. I'm sure it's possible to add this functionality, but I didn't take the time to do it because my customer doesn't care about that.
