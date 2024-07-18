@@ -1,8 +1,9 @@
+# Part 1
 # Define Zendesk credentials and API token
-$ticketsFolder = ".\" # By default will download to the current folder.
+$ticketsFolder = "f:\zendesk 2.1"
 $subdomain = "subdomain"
-$email = "test@test.com"
-$api_token = "api_token_goes_here"
+$email = "example@example.com"
+$api_token = "apikeyhere"
 $generatepdfs = $true
 $wkhtmltopdfPath = "C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe"
 $base64AuthInfo = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("$email/token:$api_token"))
@@ -15,6 +16,18 @@ function Download-File {
     )
     $progresspreference = 'SilentlyContinue'
     Invoke-WebRequest -Uri $url -OutFile $output -UseBasicParsing
+}
+
+# Function to sanitize filenames
+function Sanitize-Filename {
+    param (
+        [string]$filename
+    )
+    $invalidChars = [System.IO.Path]::GetInvalidFileNameChars() + [char[]]":?/"
+    foreach ($char in $invalidChars) {
+        $filename = $filename -replace [regex]::Escape($char), ""
+    }
+    return $filename
 }
 
 # Create a folder for tickets
@@ -89,27 +102,41 @@ function Process-Tickets {
             # Download attachments
             foreach ($attachment in $comment.attachments) {
                 $attachmentUrl = $attachment.content_url
-                $attachmentPath = Join-Path -Path $ticketFolder -ChildPath $attachment.file_name
+                $sanitizedFilename = Sanitize-Filename $attachment.file_name
+                $attachmentPath = Join-Path -Path $ticketFolder -ChildPath $sanitizedFilename
                 Download-File -url $attachmentUrl -output $attachmentPath
-                $htmlContent += "<p><a href='$attachment.file_name'>Download Attachment: $($attachment.file_name)</a></p>"
+                $htmlContent += "<p><a href='$sanitizedFilename'>Download Attachment: $sanitizedFilename</a></p>"
+            }
+
+            # Download inline images
+            $inlineImagePattern = '!\[.*?\]\((.*?)\)'
+            if ($comment.body -match $inlineImagePattern) {
+                $matches = $matches[1] | ForEach-Object { $_ -replace '\?.*$', '' }
+                foreach ($inlineImageUrl in $matches) {
+                    $imageFileName = $inlineImageUrl.Split("/")[-1]
+                    $sanitizedImageFileName = Sanitize-Filename $imageFileName
+                    $imageFilePath = Join-Path -Path $ticketFolder -ChildPath $sanitizedImageFileName
+                    Download-File -url $inlineImageUrl -output $imageFilePath
+                    $comment.body = $comment.body -replace [regex]::Escape($inlineImageUrl), $sanitizedImageFileName
+                }
             }
         }
 
         $htmlContent += "</body></html>"
-if ($generatepdfs -eq $true) {
-    # Save HTML content to a file
-    $htmlFile = Join-Path -Path $ticketFolder -ChildPath "ticket_$($ticket.id).html"
-    $htmlContent | Out-File -FilePath $htmlFile
 
-    # Convert HTML to PDF using wkhtmltopdf
-    $pdfFile = Join-Path -Path $ticketFolder -ChildPath "ticket_$($ticket.id).pdf"
+        if ($generatepdfs -eq $true) {
+            # Save HTML content to a file
+            $htmlFile = Join-Path -Path $ticketFolder -ChildPath "ticket_$($ticket.id).html"
+            $htmlContent | Out-File -FilePath $htmlFile
 
-    Start-Process -FilePath $wkhtmltopdfPath -ArgumentList "`"$htmlFile`" `"$pdfFile`"" -NoNewWindow -Wait
-}
+            # Convert HTML to PDF using wkhtmltopdf
+            $pdfFile = Join-Path -Path $ticketFolder -ChildPath "ticket_$($ticket.id).pdf"
+
+            Start-Process -FilePath $wkhtmltopdfPath -ArgumentList "`"$htmlFile`" `"$pdfFile`"" -NoNewWindow -Wait
+        }
 
         Write-Host "Finished Processing Ticket ID: $($ticket.id)"
     }
-
 }
 # Initial API endpoint
 $zendeskApiUrl = "https://$subdomain.zendesk.com/api/v2/tickets.json"
@@ -129,8 +156,7 @@ do {
 
 Write-Host "Tickets and attachments have been successfully downloaded and organized."
 
-
-
+# Part 2
 # HTML template for the index file
 $htmlHeader = @"
 <html>
@@ -177,22 +203,19 @@ $htmlHeader = @"
             for (i = 0; i < tickets.length; i++) {
                 h2 = tickets[i].getElementsByTagName('h2')[0];
                 txtValue = h2.textContent || h2.innerText;
-
-                // Check if the ticket contains the filter text
                 var matchesSearch = txtValue.toLowerCase().indexOf(filter) > -1;
 
-                // Check if the ticket contains the 📎 character
-                var hasAttachment = tickets[i].querySelector('.paperclip') !== null;
+                // Check if the ticket contains the paperclip icon (attachments)
+                var hasAttachment = tickets[i].getElementsByClassName('paperclip').length > 0;
 
                 // Apply filter logic
                 if (matchesSearch && (!filterAttachment || (filterAttachment && hasAttachment))) {
                     tickets[i].style.display = '';
                 } else {
                     tickets[i].style.display = 'none';
+                }
+            }
         }
-    }
-}
-
     </script>
 </head>
 <body>
@@ -200,7 +223,6 @@ $htmlHeader = @"
     <input type="text" id="search" onkeyup="searchTickets()" placeholder="Search for tickets...">
     <input type="checkbox" id="filterAttachment" onchange="searchTickets()" />
     <label for="filterAttachment">Filter by Attachment 📎</label>
-
 "@
 
 $htmlFooter = @"
@@ -273,12 +295,12 @@ foreach ($ticketFolder in $ticketFolders) {
     }
 
     # Add PDF link to individual ticket HTML content
-    if ($generatepdfs -eq $true)
-    {
-    $pdfLink = "<p><a href='Ticket_$($ticket.id)/ticket_$($ticket.id).pdf'>Click here to view printable PDF</a></p>"
-    $ticketHtmlContent += $pdfLink
-    $ticketHtmlContent += "</div>"
+    if ($generatepdfs -eq $true) {
+        $pdfLink = "<p><a href='Ticket_$($ticket.id)/ticket_$($ticket.id).pdf'>Click here to view printable PDF</a></p>"
+        $ticketHtmlContent += $pdfLink
     }
+
+    $ticketHtmlContent += "</div>"
 
     # Save individual ticket HTML file with UTF-8 encoding
     $ticketHtmlFilePath = Join-Path -Path $ticketFolder.FullName -ChildPath "ticket_$ticketId.html"
