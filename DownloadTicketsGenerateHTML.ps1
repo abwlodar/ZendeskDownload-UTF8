@@ -43,9 +43,33 @@ function Process-Tickets {
 
         # Fetch comments for the ticket
         $commentsUrl = "https://$subdomain.zendesk.com/api/v2/tickets/$($ticket.id)/comments.json"
-        $commentsResponse = Invoke-RestMethod -Uri $commentsUrl -Headers @{Authorization=("Basic {0}" -f $base64AuthInfo)}
-        $comments = $commentsResponse.comments
+        
+        # Retry mechanism for API rate limits
+        $retryCount = 0
+        $maxRetries = 5
+        $waitTimeInSeconds = 30
 
+        do {
+            try {
+                $commentsResponse = Invoke-RestMethod -Uri $commentsUrl -Headers @{Authorization=("Basic {0}" -f $base64AuthInfo)}
+                $comments = $commentsResponse.comments
+                $success = $true
+            } catch {
+                if ($_.Exception.Response.StatusCode.Value__ -eq 429) {
+                    Write-Host "API rate limit exceeded. Waiting for $waitTimeInSeconds seconds before retrying..."
+                    Start-Sleep -Seconds $waitTimeInSeconds
+                    $retryCount++
+                    $success = $false
+                } else {
+                    throw $_
+                }
+            }
+        } while (-not $success -and $retryCount -lt $maxRetries)
+
+        if (-not $success) {
+            Write-Host "Failed to retrieve comments for Ticket ID: $($ticket.id) after $maxRetries retries."
+            continue
+        }
         $htmlContent = "<html><body>"
         $htmlContent += "<h1>Ticket ID: $($ticket.id)</h1>"
         $htmlContent += "<p><strong>Subject:</strong> $($ticket.subject)</p>"
