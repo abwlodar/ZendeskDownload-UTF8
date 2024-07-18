@@ -96,19 +96,17 @@ function Process-Tickets {
         }
 
         $htmlContent += "</body></html>"
-if ($generatepdfs -eq $true)
-{
-        # Save HTML content to a file
-        $htmlFile = Join-Path -Path $ticketFolder -ChildPath "ticket_$($ticket.id).html"
-        $htmlContent | Out-File -FilePath $htmlFile
+if ($generatepdfs -eq $true) {
+    # Save HTML content to a file
+    $htmlFile = Join-Path -Path $ticketFolder -ChildPath "ticket_$($ticket.id).html"
+    $htmlContent | Out-File -FilePath $htmlFile
 
-        # Convert HTML to PDF using wkhtmltopdf
-        $pdfFile = Join-Path -Path $ticketFolder -ChildPath "ticket_$($ticket.id).pdf"
+    # Convert HTML to PDF using wkhtmltopdf
+    $pdfFile = Join-Path -Path $ticketFolder -ChildPath "ticket_$($ticket.id).pdf"
 
+    Start-Process -FilePath $wkhtmltopdfPath -ArgumentList "`"$htmlFile`" `"$pdfFile`"" -NoNewWindow -Wait
+}
 
-            Start-Process -FilePath $wkhtmltopdfPath -ArgumentList "$htmlFile $pdfFile" -NoNewWindow -Wait
-
-    }
         Write-Host "Finished Processing Ticket ID: $($ticket.id)"
     }
 
