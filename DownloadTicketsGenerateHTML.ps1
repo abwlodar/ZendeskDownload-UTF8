@@ -30,6 +30,21 @@ function Sanitize-Filename {
     return $filename
 }
 
+# Function to fetch user details
+function Get-User {
+    param (
+        [int64]$userId
+    )
+    $userUrl = "https://$subdomain.zendesk.com/api/v2/users/$userId.json"
+    try {
+        $userResponse = Invoke-RestMethod -Uri $userUrl -Headers @{Authorization=("Basic {0}" -f $base64AuthInfo)}
+        return $userResponse.user
+    } catch {
+        Write-Host "Failed to retrieve user with ID: $userId"
+        return $null
+    }
+}
+
 # Create a folder for tickets
 if (-Not (Test-Path -Path $ticketsFolder)) {
     New-Item -Path $ticketsFolder -ItemType Directory
@@ -47,6 +62,8 @@ function Process-Tickets {
             Write-Host "Skipping Ticket ID: $($ticket.id) as it already exists"
             continue
         }
+
+        Write-Host "Processing Ticket ID: $($ticket.id)"
 
         # Create a folder for each ticket
         $ticketFolder = Join-Path -Path $ticketsFolder -ChildPath "Ticket_$($ticket.id)"
@@ -97,9 +114,13 @@ function Process-Tickets {
             $commentFile = Join-Path -Path $ticketFolder -ChildPath "comment_$($comment.id).json"
             $comment | ConvertTo-Json -depth 10 | Out-File -FilePath $commentFile
 
+            # Fetch author information
+            $author = Get-User -userId $comment.author_id
+            $authorName = if ($author) { $author.name } else { "Unknown" }            
+
             # Add comment to HTML content
             $htmlContent += "<hr><p><strong>Comment ID:</strong> $($comment.id)</p>"
-            $htmlContent += "<p><strong>Author:</strong> $($comment.author_id)</p>"
+            $htmlContent += "<p><strong>Author:</strong> $($authorName)</p>"
             $htmlContent += "<p><strong>Created At:</strong> $($comment.created_at)</p>"
             $htmlContent += "<p>$($comment.body)</p>"
 
@@ -165,6 +186,7 @@ Write-Host "Tickets and attachments have been successfully downloaded and organi
 $htmlHeader = @"
 <html>
 <head>
+    <meta charset='UTF-8'>
     <title>Zendesk Tickets</title>
     <style>
         body { font-family: Arial, sans-serif; }
