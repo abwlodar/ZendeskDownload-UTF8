@@ -163,8 +163,9 @@ function Process-Tickets {
         Write-Host "Finished Processing Ticket ID: $($ticket.id)"
     }
 }
-# Initial API endpoint
-$zendeskApiUrl = "https://$subdomain.zendesk.com/api/v2/tickets.json"
+# Incremental API endpoint - tickets since epoch time
+
+$zendeskApiUrl = "https://$subdomain.zendesk.com/api/v2/incremental/tickets.json?start_time=0"
 
 do {
     # Fetch tickets
