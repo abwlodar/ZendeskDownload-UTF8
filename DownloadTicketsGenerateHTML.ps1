@@ -83,7 +83,7 @@ function Process-Tickets {
             Write-Host "Failed to retrieve comments for Ticket ID: $($ticket.id) after $maxRetries retries."
             continue
         }
-        $htmlContent = "<html><head><meta charset='UTF-8'><body>"
+        $htmlContent = "<html><head><meta charset='UTF-8'></head><body style='font-family: Courier, monospace;'>"
         $htmlContent += "<h1>Ticket ID: $($ticket.id)</h1>"
         $htmlContent += "<p><strong>Subject:</strong> $($ticket.subject)</p>"
         $htmlContent += "<p><strong>Description:</strong> $($ticket.description)</p>"
