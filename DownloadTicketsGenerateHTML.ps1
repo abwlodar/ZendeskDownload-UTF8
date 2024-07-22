@@ -42,7 +42,11 @@ function Process-Tickets {
     )
 
     foreach ($ticket in $tickets) {
-        Write-Host "Processing Ticket ID: $($ticket.id)"
+        $ticketFolder = Join-Path -Path $ticketsFolder -ChildPath "Ticket_$($ticket.id)"
+        if (Test-Path -Path $ticketFolder) {
+            Write-Host "Skipping Ticket ID: $($ticket.id) as it already exists"
+            continue
+        }
 
         # Create a folder for each ticket
         $ticketFolder = Join-Path -Path $ticketsFolder -ChildPath "Ticket_$($ticket.id)"
